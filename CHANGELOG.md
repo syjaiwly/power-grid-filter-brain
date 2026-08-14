@@ -1,5 +1,25 @@
 # Changelog
 
+## [v2.0] - 2026-08-14
+
+### Added
+- Multi-time-scale pollution detection: 0.5-cycle fast discovery + 1-cycle confirmation.
+- Causal fusion rule for APF compensation-reference generation.
+- Detection-latency benchmark comparing 0.5, 1 and 2 cycles.
+- Fundamental-protection validation: real 50 Hz amplitude changes remain state changes rather than pollution.
+
+### Benchmark
+For a 250 Hz pollution step at 20 kHz sampling:
+- 0.5-cycle detector: 10-90% = 1.00 ms.
+- 1-cycle detector: 10-90% = 2.65 ms.
+- 2-cycle detector: 10-90% = 6.25 ms.
+
+### Engineering rule
+The fast detector is allowed to discover a change early, but the compensation reference is enabled only after the slower confirmation channel agrees. This separates detection speed from decision confidence.
+
+### Current limitation
+The v2.0 fusion is a reference-generation layer. It still requires full three-phase sequence-aware validation, discrete PWM/sampling delay, DC-link dynamics, weak-grid impedance and saturation/recovery stress testing before hardware-oriented claims.
+
 ## [v1.8] - 2026-08-14
 
 ### Added
