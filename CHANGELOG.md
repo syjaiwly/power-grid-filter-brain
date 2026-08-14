@@ -1,20 +1,28 @@
 # Changelog
 
+## [v1.6] - 2026-08-14
+
+### Added
+- Reduced-order three-phase APF power-stage model with finite current-loop bandwidth.
+- Explicit APF compensation-current reference generator.
+- Current-limit behavior in the power-stage model.
+- Closed-loop regression test proving harmonic-residual reduction with finite actuator dynamics.
+
+### Architecture
+The project is now structured as an APF control brain: observation -> compensation reference -> current-loop/power-stage -> compensated grid response.
+
+### Important limitation
+The v1.6 plant is a control-development model, not a transistor-level inverter simulation. PWM, DC-link dynamics, L/LCL filter, sampling delay and semiconductor switching are still to be modeled.
+
 ## [v1.5] - 2026-08-14
 
 ### Added
 - Explicit APF control-brain layer.
-- First compensation-current reference generator: APF injects the negative residual between measured load current and desired fundamental current.
-- Regression test proving ideal cancellation of modeled harmonic pollution.
+- Compensation-current reference generator: APF injects the negative non-fundamental residual.
+- Ideal cancellation reference experiment.
 
 ### Architecture correction
-The project is now explicitly an **APF control-algorithm brain**, not merely a waveform software filter. The existing fundamental estimator is the observation layer; the new APF reference generator is the compensation layer.
-
-### Next
-- Three-phase positive/negative/zero-sequence compensation policy.
-- Reactive-power compensation policy.
-- Unified harmonic + reactive + imbalance reference generation.
-- Current-loop/PWM plant simulation and closed-loop APF benchmark.
+The project is explicitly an APF control-algorithm brain, not merely a waveform software filter.
 
 ## [v1.4] - 2026-08-14
 
