@@ -1,49 +1,53 @@
 # Changelog
 
-## [v1.4] - 2026-08-14
+## [v1.5] - 2026-08-14
 
 ### Added
-- AdaptiveCausalFundamental50HzBrain.
-- Fast tracking when the present/past innovation is coherent with 50 Hz.
-- Slow tracking when the disturbance is incoherent/high-frequency.
-- Explicit change-confidence state history.
-- Regression test for preserving a real 50 Hz amplitude step while rejecting a pure 5th harmonic.
+- Explicit APF control-brain layer.
+- First compensation-current reference generator: APF injects the negative residual between measured load current and desired fundamental current.
+- Regression test proving ideal cancellation of modeled harmonic pollution.
 
-### Engineering effect
-The filter now has a decision mechanism before writing a disturbance into the estimated fundamental state: coherent 50 Hz change is allowed through faster; incoherent pollution is suppressed by slower state adaptation.
+### Architecture correction
+The project is now explicitly an **APF control-algorithm brain**, not merely a waveform software filter. The existing fundamental estimator is the observation layer; the new APF reference generator is the compensation layer.
 
-### Important limitation
-This is a causal heuristic, not yet a certified power-quality classifier. Thresholds and time constants must be benchmarked against a much larger scenario matrix before deployment.
+### Next
+- Three-phase positive/negative/zero-sequence compensation policy.
+- Reactive-power compensation policy.
+- Unified harmonic + reactive + imbalance reference generation.
+- Current-loop/PWM plant simulation and closed-loop APF benchmark.
+
+## [v1.4] - 2026-08-14
+
+- Added adaptive causal fundamental tracking.
 
 ## [v1.3] - 2026-08-14
 
-- Added causal fundamental-state change detector using 50 Hz I/Q phasor comparison.
-- Real 50 Hz amplitude step: peak confidence ≈ 0.247 in reference scenario; pure 5th harmonic ≈ 0.000.
+- Added causal fundamental-state change detector.
 
 ## [v1.2] - 2026-08-14
 
-- Added explicit causal tracker latency metric and hardened real-time state handling.
+- Added explicit causal tracker latency metric.
 
 ## [v1.1] - 2026-08-14
 
-- Added CausalFundamental50HzBrain and causal-vs-offline estimator distinction.
+- Added causal fundamental estimator.
 
 ## [v1.0] - 2026-08-14
 
-- Added repeatable benchmark harness and common comparison metrics.
+- Added repeatable benchmark harness.
 
 ## [v0.9] - 2026-08-14
 
-- Added rectifier ripple, switching transients, load steps and composite stress testing.
+- Added rectifier ripple, switching transient, load step and composite stress scenarios.
 
 ## [v0.8] - 2026-08-14
 
-- Added sag/swell/interruption and interharmonic scenario engine.
+- Added sag/swell/interruption and interharmonic scenarios.
 
 ## [v0.7] - 2026-08-14
 
-- Added symmetrical components and stronger state validation.
+- Added symmetrical-component analysis.
 
 ## [v0.6-baseline] - 2026-08-14
 
-- Fixed 50 Hz prior and real-time fundamental amplitude/phase estimation.
+- Established fixed 50 Hz / 380 V priors and real-time fundamental state estimation.
