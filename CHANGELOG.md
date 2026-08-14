@@ -1,5 +1,15 @@
 # Changelog
 
+## [v1.0] - 2026-08-14
+
+### Added
+- Repeatable benchmark harness for algorithm comparison.
+- RMSE, SNR, THD and runtime metrics in a common result schema.
+- Improvement calculations for comparing filter brains.
+
+### Engineering rule
+No algorithm optimization is accepted without a repeatable benchmark scenario and regression coverage.
+
 ## [v0.9] - 2026-08-14
 
 ### Added
@@ -37,5 +47,4 @@
 - 380 V nominal line-to-line grid model.
 - Three-phase fundamental amplitude and phase estimation.
 - Sliding-window 50 Hz fundamental reconstruction.
-- Harmonic/noise pollution model.
-- RMSE, SNR and THD evaluation metrics.
+- Harmonic/noise injection and evaluation metrics.
