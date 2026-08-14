@@ -91,44 +91,82 @@ class CausalFundamental50HzBrain(AlgorithmBrain):
         return self.time_constant_cycles / self.fundamental_hz
 
 
-class FundamentalChangeDetector:
-    """Causal detector for changes in the 50 Hz fundamental state.
+class AdaptiveCausalFundamental50HzBrain(CausalFundamental50HzBrain):
+    """Causal tracker that adapts its speed from 50 Hz-coherent innovation.
 
-    Current and previous non-overlapping windows are compared. A complete new
-    cycle is therefore available before a state-change decision is made.
+    A sustained, phase-synchronous change in the fundamental is tracked faster.
+    Short, incoherent/high-frequency disturbances are tracked slowly so they do
+    not get written into the fundamental state. Only present/past samples are used.
     """
+    def __init__(self, fundamental_hz=50.0, slow_cycles=1.5, fast_cycles=0.20,
+                 innovation_cycles=0.25, initial_rms_v=220.0, gate_threshold=0.45):
+        super().__init__(fundamental_hz, slow_cycles, initial_rms_v)
+        if fast_cycles <= 0 or fast_cycles >= slow_cycles or innovation_cycles <= 0:
+            raise ValueError("fast_cycles must be positive and below slow_cycles")
+        if not 0 < gate_threshold < 1:
+            raise ValueError("gate_threshold must be between 0 and 1")
+        self.slow_cycles = float(slow_cycles)
+        self.fast_cycles = float(fast_cycles)
+        self.innovation_cycles = float(innovation_cycles)
+        self.gate_threshold = float(gate_threshold)
+        self.confidence_history = []
+
+    def process(self, polluted_signal, sample_rate_hz):
+        x = np.asarray(polluted_signal, dtype=float)
+        if x.ndim == 1: x = x[None, :]
+        if x.ndim != 2 or x.shape[-1] < 2: raise ValueError("signal must be 1-D or 2-D with at least 2 samples")
+        if sample_rate_hz <= 2 * self.fundamental_hz: raise ValueError("sample_rate_hz must be above Nyquist")
+        n = x.shape[-1]; dt = 1.0/sample_rate_hz
+        tau_slow = self.slow_cycles/self.fundamental_hz
+        tau_fast = self.fast_cycles/self.fundamental_hz
+        tau_innov = self.innovation_cycles/self.fundamental_hz
+        alpha_slow = 1.0-np.exp(-dt/tau_slow); alpha_fast=1.0-np.exp(-dt/tau_fast); alpha_i=1.0-np.exp(-dt/tau_innov)
+        t=np.arange(n)*dt; wt=2*np.pi*self.fundamental_hz*t; s=np.sin(wt); c=np.cos(wt)
+        a=np.full(x.shape[0], np.sqrt(2)*self.initial_rms_v); b=np.zeros(x.shape[0])
+        ia=np.zeros(x.shape[0]); ib=np.zeros(x.shape[0]); ir=np.zeros(x.shape[0])
+        output=np.zeros_like(x); self.state_history=[]; self.confidence_history=[]
+        for k in range(n):
+            pred=a*s[k]+b*c[k]
+            residual=x[:,k]-pred
+            da=2.0*residual*s[k]; db=2.0*residual*c[k]
+            ia += alpha_i*(da-ia); ib += alpha_i*(db-ib)
+            ir += alpha_i*(residual*residual-ir)
+            coherent=np.hypot(ia,ib)
+            incoherent=np.sqrt(np.maximum(ir,1e-12))*np.sqrt(2.0)
+            confidence=coherent/(coherent+incoherent+1e-9)
+            gain=alpha_fast if np.all(confidence >= self.gate_threshold) else alpha_slow
+            a += gain*(da-a); b += gain*(db-b)
+            output[:,k]=a*s[k]+b*c[k]
+            self.confidence_history.append(float(np.mean(confidence)))
+            self.state_history.append({"time_s":t[k],"amplitude_rms_v":np.hypot(a,b)/np.sqrt(2),"phase_rad":self._wrap_phase(np.arctan2(b,a)),"change_confidence":float(np.mean(confidence))})
+        return output
+
+    def latency_seconds(self):
+        return self.slow_cycles / self.fundamental_hz
+
+
+class FundamentalChangeDetector:
+    """Causal detector for changes in the 50 Hz fundamental state."""
     def __init__(self, fundamental_hz=50.0, window_cycles=1.0, threshold=0.20):
         if fundamental_hz <= 0 or window_cycles <= 0 or not 0 < threshold < 1:
             raise ValueError("invalid detector parameters")
-        self.fundamental_hz = float(fundamental_hz)
-        self.window_cycles = float(window_cycles)
-        self.threshold = float(threshold)
+        self.fundamental_hz = float(fundamental_hz); self.window_cycles=float(window_cycles); self.threshold=float(threshold)
 
     @staticmethod
     def _phasor(z, ss, cc):
-        z = z - np.mean(z, axis=1, keepdims=True)
-        scale = 1.0 / max(z.shape[-1] / 2.0, 1.0)
-        return np.sum(z*ss[None, :], axis=1)*scale + 1j*np.sum(z*cc[None, :], axis=1)*scale, z
+        z=z-np.mean(z,axis=1,keepdims=True); scale=1.0/max(z.shape[-1]/2.0,1.0)
+        return np.sum(z*ss[None,:],axis=1)*scale+1j*np.sum(z*cc[None,:],axis=1)*scale,z
 
     def detect(self, signal, sample_rate_hz):
-        x = np.asarray(signal, dtype=float)
-        if x.ndim == 1: x = x[None, :]
-        if x.ndim != 2: raise ValueError("signal must be 1-D or 2-D")
-        n = x.shape[-1]
-        win = max(16, int(round(sample_rate_hz / self.fundamental_hz * self.window_cycles)))
-        t = np.arange(n) / sample_rate_hz
-        s = np.sin(2*np.pi*self.fundamental_hz*t); c = np.cos(2*np.pi*self.fundamental_hz*t)
-        confidence = np.zeros(n); coherence = np.zeros(n)
-        first = 2*win-1
-        for k in range(first, n):
-            cur = x[:, k-win+1:k+1]
-            prev = x[:, k-2*win+1:k-win+1]
-            current, cur_centered = self._phasor(cur, s[k-win+1:k+1], c[k-win+1:k+1])
-            previous, _ = self._phasor(prev, s[k-2*win+1:k-win+1], c[k-2*win+1:k-win+1])
-            proj_energy = np.sum(np.abs(current)**2)
-            total_energy = np.sum(cur_centered*cur_centered) * (2.0/max(win/2.0,1.0))
-            coh = np.sqrt(np.clip(proj_energy / max(total_energy, 1e-30), 0.0, 1.0))
-            coherence[k] = coh
-            delta = np.sqrt(np.sum(np.abs(current-previous)**2)) / max(np.sqrt(np.sum(np.abs(previous)**2)), 1e-9)
-            confidence[k] = float(np.clip(coh*delta, 0.0, 1.0))
-        return {"confidence": confidence, "coherence": coherence, "is_fundamental_change": confidence >= self.threshold}
+        x=np.asarray(signal,dtype=float)
+        if x.ndim==1:x=x[None,:]
+        if x.ndim!=2:raise ValueError("signal must be 1-D or 2-D")
+        n=x.shape[-1]; win=max(16,int(round(sample_rate_hz/self.fundamental_hz*self.window_cycles)))
+        t=np.arange(n)/sample_rate_hz;s=np.sin(2*np.pi*self.fundamental_hz*t);c=np.cos(2*np.pi*self.fundamental_hz*t)
+        confidence=np.zeros(n);coherence=np.zeros(n);first=2*win-1
+        for k in range(first,n):
+            cur=x[:,k-win+1:k+1];prev=x[:,k-2*win+1:k-win+1]
+            current,centered=self._phasor(cur,s[k-win+1:k+1],c[k-win+1:k+1]);previous,_=self._phasor(prev,s[k-2*win+1:k-win+1],c[k-2*win+1:k-win+1])
+            proj=np.sum(np.abs(current)**2);total=np.sum(centered*centered)*(2.0/max(win/2.0,1.0));coh=np.sqrt(np.clip(proj/max(total,1e-30),0,1));coherence[k]=coh
+            delta=np.sqrt(np.sum(np.abs(current-previous)**2))/max(np.sqrt(np.sum(np.abs(previous)**2)),1e-9);confidence[k]=float(np.clip(coh*delta,0,1))
+        return {"confidence":confidence,"coherence":coherence,"is_fundamental_change":confidence>=self.threshold}
