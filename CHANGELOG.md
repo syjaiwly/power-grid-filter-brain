@@ -1,19 +1,24 @@
 # Changelog
 
-## [v1.3] - 2026-08-14
+## [v1.4] - 2026-08-14
 
 ### Added
-- Causal fundamental-state change detector using 50 Hz I/Q phasor comparison.
-- Non-overlapping one-cycle comparison to avoid confusing steady-state presence with a change.
-- Coherence-gated change confidence.
+- AdaptiveCausalFundamental50HzBrain.
+- Fast tracking when the present/past innovation is coherent with 50 Hz.
+- Slow tracking when the disturbance is incoherent/high-frequency.
+- Explicit change-confidence state history.
+- Regression test for preserving a real 50 Hz amplitude step while rejecting a pure 5th harmonic.
 
-### Effect demonstrated
-- A real 50 Hz amplitude step produced peak change confidence ≈ 0.247 in the reference scenario.
-- A pure 5th-harmonic (250 Hz) disturbance produced ≈ 0.000 confidence.
-- Decision threshold in the reference scenario: 0.20.
+### Engineering effect
+The filter now has a decision mechanism before writing a disturbance into the estimated fundamental state: coherent 50 Hz change is allowed through faster; incoherent pollution is suppressed by slower state adaptation.
 
-### Engineering rule
-The detector is a confidence signal, not an absolute truth classifier. It should protect legitimate fundamental changes from aggressive filtering while handing low-confidence disturbances to the pollution-removal path.
+### Important limitation
+This is a causal heuristic, not yet a certified power-quality classifier. Thresholds and time constants must be benchmarked against a much larger scenario matrix before deployment.
+
+## [v1.3] - 2026-08-14
+
+- Added causal fundamental-state change detector using 50 Hz I/Q phasor comparison.
+- Real 50 Hz amplitude step: peak confidence ≈ 0.247 in reference scenario; pure 5th harmonic ≈ 0.000.
 
 ## [v1.2] - 2026-08-14
 
