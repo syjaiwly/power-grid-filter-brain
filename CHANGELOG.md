@@ -1,37 +1,35 @@
 # Changelog
 
-## [v1.2] - 2026-08-14
+## [v1.3] - 2026-08-14
 
 ### Added
-- Explicit causal tracker latency metric (`time_constant_cycles / 50 Hz`).
-- Hardened real-time I/Q tracker validation and state handling.
-- Clear separation between offline reference and causal deployment candidate.
+- Causal fundamental-state change detector using 50 Hz I/Q phasor comparison.
+- Non-overlapping one-cycle comparison to avoid confusing steady-state presence with a change.
+- Coherence-gated change confidence.
+
+### Effect demonstrated
+- A real 50 Hz amplitude step produced peak change confidence ≈ 0.247 in the reference scenario.
+- A pure 5th-harmonic (250 Hz) disturbance produced ≈ 0.000 confidence.
+- Decision threshold in the reference scenario: 0.20.
 
 ### Engineering rule
-Real-time output must never depend on future samples. Latency and tracking-speed trade-offs must be measurable rather than hidden inside filter parameters.
+The detector is a confidence signal, not an absolute truth classifier. It should protect legitimate fundamental changes from aggressive filtering while handing low-confidence disturbances to the pollution-removal path.
+
+## [v1.2] - 2026-08-14
+
+- Added explicit causal tracker latency metric and hardened real-time state handling.
 
 ## [v1.1] - 2026-08-14
 
-### Added
-- CausalFundamental50HzBrain for real-time experiments.
-- Synchronous I/Q demodulation with exponential state tracking.
-- Explicit separation between offline sliding-window reference and causal deployment candidate.
-- Regression tests for amplitude-step tracking and Nyquist validation.
+- Added CausalFundamental50HzBrain and causal-vs-offline estimator distinction.
 
 ## [v1.0] - 2026-08-14
 
-### Added
-- Repeatable benchmark harness for algorithm comparison.
-- RMSE, SNR, THD and runtime metrics in a common result schema.
-- Improvement calculations for comparing filter brains.
+- Added repeatable benchmark harness and common comparison metrics.
 
 ## [v0.9] - 2026-08-14
 
-### Added
-- Rectifier/DC-link ripple model.
-- Damped switching-transient model.
-- Fundamental load-step model preserving 50 Hz.
-- Composite stress scenario combining multiple pollution mechanisms.
+- Added rectifier ripple, switching transients, load steps and composite stress testing.
 
 ## [v0.8] - 2026-08-14
 
