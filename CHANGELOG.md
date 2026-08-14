@@ -1,5 +1,21 @@
 # Changelog
 
+## [v0.8] - 2026-08-14
+
+### Added
+- Reusable power-quality event scenario engine.
+- Three-phase sag, swell, and interruption events.
+- Phase-local or three-phase events.
+- Non-integer interharmonic injection.
+- Deterministic composite stress scenario combining harmonics, interharmonics, DC offset, noise, sag, swell, and interruption.
+- Regression tests for scenario correctness and reproducibility.
+
+### Fixed
+- Phase-local voltage event mutation now updates the intended phase instead of a temporary advanced-indexing copy.
+
+### Design rule
+Scenario generation must preserve the 50 Hz grid prior while independently stressing amplitude, balance, waveform purity, and transient behavior.
+
 ## [v0.7] - 2026-08-14
 
 ### Added
