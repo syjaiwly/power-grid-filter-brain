@@ -17,10 +17,10 @@ def _mask(t, start, end):
 
 
 def apply_voltage_events(signal, t, events: list[Event]):
-    """Apply physically interpretable voltage events to a 3-phase waveform."""
+    """Apply voltage events without changing nominal 50 Hz frequency."""
     x = np.asarray(signal, dtype=float).copy()
-    if x.ndim != 2 or x.shape[0] != 3:
-        raise ValueError("signal must have shape [3, samples]")
+    if x.ndim != 2 or x.shape[0] != 3 or len(t) != x.shape[1]:
+        raise ValueError("signal must have shape [3, samples] and match t")
     for event in events:
         if event.end_s <= event.start_s:
             raise ValueError("event end_s must be greater than start_s")
@@ -39,10 +39,10 @@ def apply_voltage_events(signal, t, events: list[Event]):
 
 
 def add_interharmonic(signal, t, frequency_hz, relative_amplitude, phase_rad=0.0, phase_scales=None):
-    """Inject a non-integer-frequency component; useful for converter/load tests."""
+    """Inject a non-integer-frequency component."""
     x = np.asarray(signal, dtype=float).copy()
-    if x.ndim != 2 or x.shape[0] != 3:
-        raise ValueError("signal must have shape [3, samples]")
+    if x.ndim != 2 or x.shape[0] != 3 or len(t) != x.shape[1]:
+        raise ValueError("signal must have shape [3, samples] and match t")
     rms = np.sqrt(np.mean(x * x, axis=1))
     scales = np.ones(3) if phase_scales is None else np.asarray(phase_scales, dtype=float)
     if scales.shape != (3,):
@@ -52,8 +52,45 @@ def add_interharmonic(signal, t, frequency_hz, relative_amplitude, phase_rad=0.0
     return x
 
 
+def add_rectifier_ripple(signal, t, ripple_hz=300.0, relative_amplitude=0.02,
+                         phase_rad=0.0, phase_scales=None):
+    """Model characteristic 6-pulse rectifier/DC-link ripple."""
+    return add_interharmonic(signal, t, ripple_hz, relative_amplitude,
+                             phase_rad, phase_scales)
+
+
+def add_switching_transients(signal, t, events, amplitude_v=15.0, decay_s=0.001,
+                             ringing_hz=1800.0):
+    """Inject short damped ringing bursts representing switching transients."""
+    x = np.asarray(signal, dtype=float).copy()
+    if x.ndim != 2 or x.shape[0] != 3 or len(t) != x.shape[1]:
+        raise ValueError("signal must have shape [3, samples] and match t")
+    if decay_s <= 0 or ringing_hz <= 0:
+        raise ValueError("decay_s and ringing_hz must be positive")
+    for event in events:
+        elapsed = np.maximum(t - float(event.start_s), 0.0)
+        active = t >= float(event.start_s)
+        burst = amplitude_v * np.exp(-elapsed / decay_s) * np.sin(2*np.pi*ringing_hz*elapsed)
+        phases = range(3) if event.phase is None else [event.phase]
+        for phase in phases:
+            x[phase, active] += burst[active]
+    return x
+
+
+def apply_load_step(signal, t, start_s, end_s=None, amplitude_scale=0.9, phase=None):
+    """Model a fundamental amplitude step while preserving 50 Hz."""
+    x = np.asarray(signal, dtype=float).copy()
+    mask = t >= start_s
+    if end_s is not None:
+        mask &= t < end_s
+    phases = range(3) if phase is None else [phase]
+    for p in phases:
+        x[p, mask] *= float(amplitude_scale)
+    return x
+
+
 def composite_stress(signal, t, fundamental_hz=50.0, seed=7):
-    """Deterministic high-stress scenario used for regression tests."""
+    """Deterministic high-stress scenario used for regression benchmarks."""
     from .pollution import PollutionConfig, Harmonic, inject_pollution
     rng = np.random.default_rng(seed)
     cfg = PollutionConfig(
@@ -68,10 +105,16 @@ def composite_stress(signal, t, fundamental_hz=50.0, seed=7):
         seed=seed,
     )
     polluted = inject_pollution(signal, fundamental_hz, t, cfg)
-    polluted = add_interharmonic(
-        polluted, t, 83.0, 0.012, phase_rad=0.2,
-        phase_scales=[1.0, 0.7, 1.25]
-    )
+    polluted = add_interharmonic(polluted, t, 83.0, 0.012, phase_rad=0.2,
+                                 phase_scales=[1.0, 0.7, 1.25])
+    polluted = add_rectifier_ripple(polluted, t, 300.0, 0.008,
+                                    phase_scales=[1.0, 0.9, 1.1])
+    polluted = add_switching_transients(
+        polluted, t,
+        [Event(0.115, 0.115, "switch", 1.0, phase=0),
+         Event(0.162, 0.162, "switch", 1.0, phase=None)],
+        amplitude_v=12.0, decay_s=0.0008, ringing_hz=2200.0)
+    polluted = apply_load_step(polluted, t, 0.045, 0.07, 0.92, phase=1)
     events = [
         Event(0.07, 0.095, "sag", 0.82, phase=None),
         Event(0.13, 0.145, "swell", 1.10, phase=1),
