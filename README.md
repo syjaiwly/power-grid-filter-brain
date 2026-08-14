@@ -2,7 +2,7 @@
 
 三相 50 Hz / 380 V 电网污染数字孪生与滤波算法验证项目。
 
-## 当前版本：v0.7
+## 当前版本：v0.8
 
 固定系统先验：
 - 电网频率：50 Hz
@@ -19,20 +19,23 @@
 
 ## 当前数据流
 
-Ideal Grid -> Pollution Models -> Polluted Input
+Ideal Grid -> Pollution Models -> Stress Scenario Engine -> Polluted Input
 -> 50 Hz Fundamental State Estimator
 -> Fundamental Reconstruction
 -> Symmetrical Components
 -> Evaluation
 
-## 当前污染模型
+## 当前污染 / 事件模型
 
 - 多次谐波
 - 三相独立谐波幅值 / 相位 / 比例
 - 白噪声
 - 每相 DC Offset
-
-更多真实场景（暂降、暂升、间谐波、开关瞬态、整流负载、PWM 等）进入后续场景库，不在当前版本中假装已经完成。
+- 三相或单相暂降（Sag）
+- 三相或单相暂升（Swell）
+- 暂时中断
+- 间谐波
+- 组合压力场景
 
 ## 研发流程
 
@@ -42,4 +45,4 @@ GitHub Actions 已配置为每次 push / pull request 自动运行 pytest。
 
 ## 下一步
 
-v0.8：建立真实电网污染场景库，并加入暂降/暂升、间谐波、瞬态、三相不平衡和负载突变的组合测试；随后再比较不同滤波/估计算法的延迟、THD、RMSE 和基波保真度。
+v0.9：加入开关瞬态、整流负载、PWM/变流器型污染、负载突变与更严格的事件边界模型；建立统一 benchmark，对滤波算法的延迟、THD、RMSE、基波幅值/相位保真度和三相不平衡保真度进行比较。
