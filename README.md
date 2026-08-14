@@ -2,7 +2,7 @@
 
 三相 50 Hz / 380 V 电网污染数字孪生与滤波算法验证项目。
 
-## 当前版本：v0.8
+## 当前版本：v1.1
 
 固定系统先验：
 - 电网频率：50 Hz
@@ -17,13 +17,26 @@
 
 核心原则：380 V 是额定系统规格，不把瞬时基波幅值强行固定为 220 V；算法从污染波形中估计真实基波状态，再重构基波。
 
+## 当前算法路径
+
+### Offline reference
+`Fundamental50HzBrain`
+- 滑动窗口最小二乘
+- 用于高精度离线重构与算法对照
+- 非严格因果，不作为最终实时部署假设
+
+### Real-time candidate
+`CausalFundamental50HzBrain`
+- 50 Hz 固定先验
+- 同步 I/Q 解调
+- 指数状态跟踪
+- 当前样本只依赖当前及历史样本
+- 可调跟踪速度 / 噪声抑制权衡
+
 ## 当前数据流
 
 Ideal Grid -> Pollution Models -> Stress Scenario Engine -> Polluted Input
--> 50 Hz Fundamental State Estimator
--> Fundamental Reconstruction
--> Symmetrical Components
--> Evaluation
+-> Fundamental State Estimator -> Fundamental Reconstruction -> Sequence Analysis -> Benchmark
 
 ## 当前污染 / 事件模型
 
@@ -31,18 +44,28 @@ Ideal Grid -> Pollution Models -> Stress Scenario Engine -> Polluted Input
 - 三相独立谐波幅值 / 相位 / 比例
 - 白噪声
 - 每相 DC Offset
-- 三相或单相暂降（Sag）
-- 三相或单相暂升（Swell）
-- 暂时中断
+- 三相或单相暂降 / 暂升 / 中断
 - 间谐波
+- 300 Hz 整流/DC-link ripple
+- 阻尼开关瞬态
+- 基波负载突变
 - 组合压力场景
+
+## Benchmark
+
+统一记录：
+- RMSE
+- SNR
+- THD
+- runtime
+- RMSE reduction / SNR gain / THD reduction
+
+后续所有算法优化必须使用同一确定性压力场景进行回归比较。
 
 ## 研发流程
 
 设计 -> 实现 -> 仿真 -> 测试 -> 评估 -> 优化 -> Git 版本记录
 
-GitHub Actions 已配置为每次 push / pull request 自动运行 pytest。
+## 下一步：v1.2
 
-## 下一步
-
-v0.9：加入开关瞬态、整流负载、PWM/变流器型污染、负载突变与更严格的事件边界模型；建立统一 benchmark，对滤波算法的延迟、THD、RMSE、基波幅值/相位保真度和三相不平衡保真度进行比较。
+重点转向实时算法工程化：跟踪延迟、状态置信度、突变检测、抗暂态能力，以及不同 `time_constant_cycles` 下的统一 benchmark。
