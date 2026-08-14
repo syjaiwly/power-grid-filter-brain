@@ -92,14 +92,14 @@ class CausalFundamental50HzBrain(AlgorithmBrain):
 
 
 class FundamentalChangeDetector:
-    """Causal classifier for phase-synchronous fundamental change.
+    """Causal detector for *changes* in the 50 Hz fundamental state.
 
-    A change is considered more likely to be a legitimate fundamental event when
-    the recent residual projects strongly onto the 50 Hz I/Q basis. Harmonic,
-    switching and broadband pollution are less coherent with that basis. This is
-    a confidence signal, not a safety-critical truth label.
+    It compares consecutive short-window 50 Hz I/Q estimates. A large change
+    in the estimated phasor is scored highly only when the current window is
+    also coherent with 50 Hz. Harmonic/switching pollution can be energetic,
+    but its 50 Hz projection is normally small.
     """
-    def __init__(self, fundamental_hz=50.0, window_cycles=1.0, threshold=0.35):
+    def __init__(self, fundamental_hz=50.0, window_cycles=1.0, threshold=0.20):
         if fundamental_hz <= 0 or window_cycles <= 0 or not 0 < threshold < 1:
             raise ValueError("invalid detector parameters")
         self.fundamental_hz = float(fundamental_hz)
@@ -115,12 +115,23 @@ class FundamentalChangeDetector:
         t = np.arange(n) / sample_rate_hz
         s = np.sin(2*np.pi*self.fundamental_hz*t); c = np.cos(2*np.pi*self.fundamental_hz*t)
         confidence = np.zeros(n)
+        coherence = np.zeros(n)
+        phasor = None
+        scale = 1.0 / max(win / 2.0, 1.0)
         for k in range(win-1, n):
             z = x[:, k-win+1:k+1]
-            ss = s[k-win+1:k+1]; cc = c[k-win+1:k+1]
-            # Remove local mean: DC should not look like a fundamental change.
             z = z - np.mean(z, axis=1, keepdims=True)
-            proj = np.sum(z*ss[None,:])**2 + np.sum(z*cc[None,:])**2
-            energy = np.sum(z*z) * (np.sum(ss*ss) + np.sum(cc*cc))
-            confidence[k] = np.sqrt(np.clip(proj / max(energy, 1e-30), 0.0, 1.0))
-        return {"confidence": confidence, "is_fundamental_change": confidence >= self.threshold}
+            ss = s[k-win+1:k+1]; cc = c[k-win+1:k+1]
+            a = np.sum(z*ss[None,:], axis=1) * scale
+            b = np.sum(z*cc[None,:], axis=1) * scale
+            current = a + 1j*b
+            proj_energy = np.sum(np.abs(current)**2)
+            total_energy = np.sum(z*z) * scale * 2.0
+            coh = np.sqrt(np.clip(proj_energy / max(total_energy, 1e-30), 0.0, 1.0))
+            coherence[k] = coh
+            if phasor is not None:
+                denom = max(np.sqrt(np.sum(np.abs(phasor)**2)), 1e-9)
+                delta = np.sqrt(np.sum(np.abs(current - phasor)**2)) / denom
+                confidence[k] = float(np.clip(coh * delta, 0.0, 1.0))
+            phasor = current
+        return {"confidence": confidence, "coherence": coherence, "is_fundamental_change": confidence >= self.threshold}
