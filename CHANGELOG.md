@@ -1,5 +1,18 @@
 # Changelog
 
+## [v2.4] - 2026-08-14
+
+### Added
+- Reduced-order three-phase diode-bridge + DC-link nonlinear load model.
+- Explicit nonlinear-load stress-test specification and acceptance gates.
+- Response-time, saturation, DC-link excursion and fundamental-preservation metrics for nonlinear load steps.
+
+### Engineering rule
+Stationary hand-injected harmonics are no longer sufficient as the primary stress case. APF validation must include nonlinear loads that naturally generate narrow charging-current pulses and broadband harmonic content.
+
+### Current limitation
+This is a controller-development rectifier model. Switching-device reverse recovery, PWM dead time, parasitics, L/LCL dynamics and full digital delay remain to be added to the high-fidelity power stage.
+
 ## [v2.0] - 2026-08-14
 
 ### Added
