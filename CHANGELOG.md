@@ -1,5 +1,15 @@
 # Changelog
 
+## [v1.2] - 2026-08-14
+
+### Added
+- Explicit causal tracker latency metric (`time_constant_cycles / 50 Hz`).
+- Hardened real-time I/Q tracker validation and state handling.
+- Clear separation between offline reference and causal deployment candidate.
+
+### Engineering rule
+Real-time output must never depend on future samples. Latency and tracking-speed trade-offs must be measurable rather than hidden inside filter parameters.
+
 ## [v1.1] - 2026-08-14
 
 ### Added
@@ -7,9 +17,6 @@
 - Synchronous I/Q demodulation with exponential state tracking.
 - Explicit separation between offline sliding-window reference and causal deployment candidate.
 - Regression tests for amplitude-step tracking and Nyquist validation.
-
-### Engineering rule
-A deployment candidate must be causal: its output at sample k may depend only on samples up to k. Offline zero/future-lookahead estimators remain useful as accuracy references.
 
 ## [v1.0] - 2026-08-14
 
@@ -25,9 +32,6 @@ A deployment candidate must be causal: its output at sample k may depend only on
 - Damped switching-transient model.
 - Fundamental load-step model preserving 50 Hz.
 - Composite stress scenario combining multiple pollution mechanisms.
-
-### Fixed
-- Phase-local voltage events now modify the intended phase directly.
 
 ## [v0.8] - 2026-08-14
 
