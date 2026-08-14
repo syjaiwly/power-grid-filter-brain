@@ -10,70 +10,82 @@ class AlgorithmBrain(ABC):
 
 class PassthroughBrain(AlgorithmBrain):
     def process(self, polluted_signal: np.ndarray, sample_rate_hz: float) -> np.ndarray:
-        return polluted_signal.copy()
+        return np.asarray(polluted_signal, dtype=float).copy()
 
 
 class Fundamental50HzBrain(AlgorithmBrain):
-    """v0.6 reference brain.
+    """Real-time 50 Hz fundamental state estimator.
 
-    Grid frequency is a fixed system specification: 50 Hz.
-    Nominal three-phase voltage is 380 V line-to-line (220 V phase RMS).
-
-    The actual fundamental amplitude and phase are estimated online from the
-    contaminated waveform and reconstructed over sliding windows.
+    50 Hz is a fixed grid prior. Fundamental RMS amplitude and phase are
+    estimated independently for every input phase. The phase estimate is
+    referenced to absolute time, so state history is directly comparable
+    across sliding windows.
     """
 
     def __init__(self, fundamental_hz=50.0, window_cycles=2.0):
-        self.fundamental_hz = fundamental_hz
-        self.window_cycles = window_cycles
+        if fundamental_hz <= 0 or window_cycles <= 0:
+            raise ValueError("fundamental_hz and window_cycles must be positive")
+        self.fundamental_hz = float(fundamental_hz)
+        self.window_cycles = float(window_cycles)
         self.state_history = []
 
-    def _estimate_block(self, x, sample_rate_hz):
+    @staticmethod
+    def _wrap_phase(phi):
+        return (phi + np.pi) % (2 * np.pi) - np.pi
+
+    def _estimate_block(self, x, sample_rate_hz, start_time_s):
         n = x.shape[-1]
-        t = np.arange(n) / sample_rate_hz
-        phase = 2 * np.pi * self.fundamental_hz * t
-        A = np.column_stack([np.sin(phase), np.cos(phase)])
-        coeff = x @ np.linalg.pinv(A).T
-        sin_c = coeff[:, 0]
-        cos_c = coeff[:, 1]
-        amplitude_rms = np.hypot(sin_c, cos_c) / np.sqrt(2.0)
-        phase_rad = np.arctan2(cos_c, sin_c)
-        recon = (
-            sin_c[:, None] * np.sin(phase)[None, :]
-            + cos_c[:, None] * np.cos(phase)[None, :]
+        t = start_time_s + np.arange(n) / sample_rate_hz
+        wt = 2 * np.pi * self.fundamental_hz * t
+        design = np.column_stack((np.sin(wt), np.cos(wt)))
+        coeff = x @ np.linalg.pinv(design).T
+        sin_coeff, cos_coeff = coeff[:, 0], coeff[:, 1]
+        amplitude_rms = np.hypot(sin_coeff, cos_coeff) / np.sqrt(2.0)
+        phase_rad = self._wrap_phase(np.arctan2(cos_coeff, sin_coeff))
+        reconstruction = (
+            sin_coeff[:, None] * np.sin(wt)[None, :]
+            + cos_coeff[:, None] * np.cos(wt)[None, :]
         )
-        return amplitude_rms, phase_rad, recon
+        return amplitude_rms, phase_rad, reconstruction
 
     def process(self, polluted_signal: np.ndarray, sample_rate_hz: float) -> np.ndarray:
         x = np.asarray(polluted_signal, dtype=float)
+        if x.ndim == 1:
+            x = x[None, :]
+        if x.ndim != 2 or x.shape[-1] < 32:
+            raise ValueError("polluted_signal must be 1-D or 2-D with at least 32 samples")
+        if sample_rate_hz <= 2 * self.fundamental_hz:
+            raise ValueError("sample_rate_hz must be above the Nyquist rate")
+
         n = x.shape[-1]
         samples_per_cycle = sample_rate_hz / self.fundamental_hz
-        win = max(32, int(round(samples_per_cycle * self.window_cycles)))
-        hop = max(1, win // 4)
+        window = max(32, int(round(samples_per_cycle * self.window_cycles)))
+        hop = max(1, window // 4)
 
-        out = np.zeros_like(x)
+        output = np.zeros_like(x)
         weights = np.zeros(n)
         self.state_history = []
 
         for start in range(0, n, hop):
-            end = min(n, start + win)
-            start = max(0, end - win)
+            end = min(n, start + window)
+            start = max(0, end - window)
             if end - start < 32:
                 break
 
-            block = x[:, start:end]
-            amp_rms, phase_rad, recon = self._estimate_block(block, sample_rate_hz)
+            amp_rms, phase_rad, reconstruction = self._estimate_block(
+                x[:, start:end], sample_rate_hz, start / sample_rate_hz
+            )
             self.state_history.append({
-                "time_s": (start + end) / 2 / sample_rate_hz,
+                "time_s": (start + end) / (2 * sample_rate_hz),
                 "amplitude_rms_v": amp_rms.copy(),
                 "phase_rad": phase_rad.copy(),
             })
 
-            w = np.hanning(end - start)
-            if np.all(w == 0):
-                w = np.ones(end - start)
-            out[:, start:end] += recon * w[None, :]
-            weights[start:end] += w
+            weight = np.hanning(end - start)
+            if not np.any(weight):
+                weight = np.ones(end - start)
+            output[:, start:end] += reconstruction * weight[None, :]
+            weights[start:end] += weight
 
         weights[weights == 0] = 1.0
-        return out / weights[None, :]
+        return output / weights[None, :]
