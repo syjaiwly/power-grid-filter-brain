@@ -1,5 +1,19 @@
 # Changelog
 
+## [v0.7] - 2026-08-14
+
+### Added
+- Positive / negative / zero sequence decomposition.
+- Phase-specific harmonic distortion and per-phase DC offset simulation.
+- Stronger automated tests for balanced and unbalanced three-phase states.
+
+### Fixed
+- Fundamental phase estimates now use absolute time across sliding windows.
+
+### Hardened
+- Input shape validation.
+- Sample-rate / Nyquist validation.
+
 ## [v0.6-baseline] - 2026-08-14
 
 ### Added
@@ -13,10 +27,3 @@
 
 ### Design rule
 50 Hz is fixed; the real-time fundamental state is not fixed.
-
-## [Unreleased]
-
-Planned for v0.7:
-- Phase continuity
-- Symmetrical components
-- Three-phase unbalance analysis
