@@ -17,12 +17,21 @@ def test_fixed_50hz_amplitude_phase_reconstruction():
     assert np.sqrt(np.mean((out - three)**2)) < 0.5
 
 
-def test_detector_scores_fundamental_higher_than_5th_harmonic():
+def test_detector_is_quiet_on_steady_fundamental():
     fs = 20_000
-    t = np.arange(int(0.12 * fs)) / fs
-    fundamental = np.sin(2*np.pi*50*t)
+    t = np.arange(int(0.15 * fs)) / fs
+    x = np.sin(2*np.pi*50*t)
+    result = FundamentalChangeDetector(window_cycles=1).detect(x, fs)
+    assert np.max(result["confidence"][int(.06*fs):]) < 0.20
+
+
+def test_detector_scores_real_fundamental_step_over_5th_harmonic():
+    fs = 20_000
+    t = np.arange(int(0.20 * fs)) / fs
+    amp = np.where(t < .10, 1.0, 1.35)
+    step = amp*np.sin(2*np.pi*50*t)
     harmonic = np.sin(2*np.pi*250*t)
     detector = FundamentalChangeDetector(window_cycles=1)
-    cf = detector.detect(fundamental, fs)["confidence"][-1]
-    ch = detector.detect(harmonic, fs)["confidence"][-1]
-    assert cf > ch + 0.15
+    cs = detector.detect(step, fs)["confidence"]
+    ch = detector.detect(harmonic, fs)["confidence"]
+    assert np.max(cs[int(.10*fs):int(.13*fs)]) > np.max(ch) + 0.10
