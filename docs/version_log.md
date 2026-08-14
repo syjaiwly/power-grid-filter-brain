@@ -1,36 +1,33 @@
 # Version Log
 
-## v1.0 — 2026-08-14
+## v1.1 — 2026-08-14
 
 ### Added
-- Repeatable benchmark harness with common metrics and runtime measurement.
-- Explicit improvement calculations for RMSE, SNR and THD.
-- Regression test to keep the benchmark interface stable.
+- CausalFundamental50HzBrain using synchronous I/Q demodulation and exponential tracking.
+- Explicit causal-vs-offline estimator distinction.
+- Regression tests for amplitude-step tracking.
 
-### Engineering rule
-Every future algorithm version must be compared against the same deterministic stress scenario before it is considered an improvement.
+### Key engineering finding
+The previous sliding-window estimator is excellent as an offline reference but is not strictly causal because its reconstruction uses windowed data around each region. A real deployment path therefore needs a causal state tracker. v1.1 introduces that candidate.
+
+## v1.0 — 2026-08-14
+
+- Added deterministic benchmark harness and common comparison metrics.
 
 ## v0.9 — 2026-08-14
 
-### Added
-- Rectifier/DC-link ripple.
-- Damped switching transients.
-- Fundamental load-step events.
-- Composite stress scenario combining multiple pollution mechanisms.
-
-### Fixed
-- Phase-local event mutation bug.
+- Added rectifier ripple, switching transients, load steps and composite stress testing.
+- Fixed phase-local event mutation.
 
 ## v0.8 — 2026-08-14
 
-- Added reusable sag/swell/interruption and interharmonic scenario engine.
+- Added sag/swell/interruption and interharmonic scenario engine.
 
 ## v0.7 — 2026-08-14
 
 - Fixed absolute-time phase reference.
-- Added symmetrical components and stronger validation.
+- Added symmetrical components.
 
 ## v0.6-baseline — 2026-08-14
 
-- Fixed 50 Hz grid prior.
-- Added real-time fundamental amplitude/phase estimation and reconstruction.
+- Fixed 50 Hz prior and real-time fundamental amplitude/phase estimation.
