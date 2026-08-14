@@ -1,5 +1,15 @@
 # Version Log
 
+## v1.2 — 2026-08-14
+
+### Added
+- Explicit causal tracker latency metric based on the configured 50 Hz state time constant.
+- Hardened real-time input/parameter validation.
+- Clear deployment rule separating causal state tracking from offline reference reconstruction.
+
+### Key engineering rule
+Latency is now a first-class metric. We will not accept an apparent filtering improvement if it relies on future samples or hides unacceptable tracking delay.
+
 ## v1.1 — 2026-08-14
 
 ### Added
@@ -8,7 +18,7 @@
 - Regression tests for amplitude-step tracking.
 
 ### Key engineering finding
-The previous sliding-window estimator is excellent as an offline reference but is not strictly causal because its reconstruction uses windowed data around each region. A real deployment path therefore needs a causal state tracker. v1.1 introduces that candidate.
+The previous sliding-window estimator is useful as an offline reference but is not strictly causal. A real deployment path therefore needs a causal state tracker.
 
 ## v1.0 — 2026-08-14
 
@@ -17,7 +27,6 @@ The previous sliding-window estimator is excellent as an offline reference but i
 ## v0.9 — 2026-08-14
 
 - Added rectifier ripple, switching transients, load steps and composite stress testing.
-- Fixed phase-local event mutation.
 
 ## v0.8 — 2026-08-14
 
