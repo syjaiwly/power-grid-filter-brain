@@ -57,11 +57,7 @@ class Fundamental50HzBrain(AlgorithmBrain):
 
 
 class CausalFundamental50HzBrain(AlgorithmBrain):
-    """Strictly causal real-time 50 Hz I/Q state tracker.
-
-    Each sample uses only current/past input. The smoothing time constant is
-    expressed in 50 Hz cycles, making the latency/noise trade-off explicit.
-    """
+    """Strictly causal real-time 50 Hz I/Q state tracker."""
     def __init__(self, fundamental_hz=50.0, time_constant_cycles=1.0, initial_rms_v=220.0):
         if fundamental_hz <= 0 or time_constant_cycles <= 0:
             raise ValueError("fundamental_hz and time_constant_cycles must be positive")
@@ -92,5 +88,39 @@ class CausalFundamental50HzBrain(AlgorithmBrain):
         return output
 
     def latency_seconds(self):
-        # First-order IIR 63.2% response time; useful as a transparent state-tracking metric.
         return self.time_constant_cycles / self.fundamental_hz
+
+
+class FundamentalChangeDetector:
+    """Causal classifier for phase-synchronous fundamental change.
+
+    A change is considered more likely to be a legitimate fundamental event when
+    the recent residual projects strongly onto the 50 Hz I/Q basis. Harmonic,
+    switching and broadband pollution are less coherent with that basis. This is
+    a confidence signal, not a safety-critical truth label.
+    """
+    def __init__(self, fundamental_hz=50.0, window_cycles=1.0, threshold=0.35):
+        if fundamental_hz <= 0 or window_cycles <= 0 or not 0 < threshold < 1:
+            raise ValueError("invalid detector parameters")
+        self.fundamental_hz = float(fundamental_hz)
+        self.window_cycles = float(window_cycles)
+        self.threshold = float(threshold)
+
+    def detect(self, signal, sample_rate_hz):
+        x = np.asarray(signal, dtype=float)
+        if x.ndim == 1: x = x[None, :]
+        if x.ndim != 2: raise ValueError("signal must be 1-D or 2-D")
+        n = x.shape[-1]
+        win = max(16, int(round(sample_rate_hz / self.fundamental_hz * self.window_cycles)))
+        t = np.arange(n) / sample_rate_hz
+        s = np.sin(2*np.pi*self.fundamental_hz*t); c = np.cos(2*np.pi*self.fundamental_hz*t)
+        confidence = np.zeros(n)
+        for k in range(win-1, n):
+            z = x[:, k-win+1:k+1]
+            ss = s[k-win+1:k+1]; cc = c[k-win+1:k+1]
+            # Remove local mean: DC should not look like a fundamental change.
+            z = z - np.mean(z, axis=1, keepdims=True)
+            proj = np.sum(z*ss[None,:])**2 + np.sum(z*cc[None,:])**2
+            energy = np.sum(z*z) * (np.sum(ss*ss) + np.sum(cc*cc))
+            confidence[k] = np.sqrt(np.clip(proj / max(energy, 1e-30), 0.0, 1.0))
+        return {"confidence": confidence, "is_fundamental_change": confidence >= self.threshold}
