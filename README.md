@@ -34,7 +34,7 @@ APF补偿电流参考
 
 ## 当前算法层级
 
-### 1. Fundamental State Estimator — 已有
+### 1. Fundamental State Estimator
 
 `Fundamental50HzBrain`：离线高精度参考估计。
 
@@ -45,36 +45,43 @@ APF补偿电流参考
 - 实时幅值 / 相位状态跟踪
 - 只使用当前及历史采样
 
-### 2. Pollution / State Discriminator — 已有原型
+### 2. Pollution / State Discriminator
 
 判断当前变化更像真实 50 Hz 基波状态变化还是非基波污染，并控制跟踪速度。
 
-### 3. APF Compensation Reference — v1.5 新增
+### 3. APF Compensation Reference
 
-`generate_current_reference()`：
+`harmonic_compensation_reference()`：测得负载电流减去目标基波，取负号生成 APF 补偿电流参考。
 
-```text
-测得负载电流 = 目标基波电流 + 污染电流
-                         ↓
-APF补偿电流参考 = -污染电流
-```
+### 4. APF Power Stage — v1.6
 
-这是 APF 真正闭环控制链的第一步。
+`ThreePhaseAPFPowerStage` 是第一版闭环功率级开发模型：
 
-### 4. 下一阶段
+- 三相电流通道
+- 有限电流环带宽
+- 补偿电流限幅
+- 采样级离散仿真
 
-- 正序 / 负序 / 零序补偿策略
-- 无功补偿
-- 谐波 + 无功 + 不平衡统一补偿目标
-- APF 逆变器 / 电流环 / PWM 仿真
-- 闭环电网净化效果 benchmark
+它用于验证算法参考经过有限执行机构后还能否有效降低污染；不是最终的器件级逆变器模型。
 
 ## 当前数据流
 
 Ideal Grid → Load / Pollution Digital Twin → Measurement
 → Fundamental State Estimator → Pollution / Sequence Analysis
-→ APF Compensation Reference → Current Controller → PWM / Inverter
+→ APF Compensation Reference → Current Loop / Power Stage
 → Grid + APF Closed Loop → Evaluation
+
+## 下一阶段
+
+- DC-link 电压与能量动态
+- L / LCL 接口模型
+- PWM / 开关频率模型
+- PR / dq 电流控制器
+- 采样与计算延迟
+- 限流与饱和恢复
+- 电网阻抗 / 弱电网
+- 正序 / 负序 / 零序统一补偿
+- 无功 + 谐波 + 不平衡统一补偿
 
 ## 研发流程
 
