@@ -1,5 +1,20 @@
 # Version Log
 
+## v0.8 — 2026-08-14
+
+### Added
+- Reusable voltage-event engine for sag, swell, and interruption.
+- Phase-local events to test asymmetric faults and unbalance.
+- Interharmonic injection for non-integer-frequency pollution.
+- Deterministic composite stress scenario combining multiple pollution mechanisms.
+- Regression tests for event locality and scenario reproducibility.
+
+### Fixed
+- Phase-local event application no longer relies on NumPy advanced-indexing assignment to a temporary copy.
+
+### Engineering focus
+The test environment now stresses the algorithm with conditions closer to field operation instead of only stationary harmonic-plus-noise signals. Future filter changes must be evaluated on these composite scenarios.
+
 ## v0.7 — 2026-08-14
 
 ### Optimized
