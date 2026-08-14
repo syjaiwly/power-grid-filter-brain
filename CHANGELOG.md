@@ -1,5 +1,20 @@
 # Changelog
 
+## [v1.8] - 2026-08-14
+
+### Added
+- Response-time metrics as a first-class APF acceptance criterion.
+- 10-90% rise-time measurement.
+- 10% settling-time measurement.
+- Overshoot measurement for dynamic compensation tests.
+- Explicit engineering requirement: suppression speed must be evaluated together with harmonic attenuation and fundamental preservation.
+
+### Engineering rule
+An APF algorithm is not considered better merely because it removes more pollution. It must also respond fast enough to load/harmonic changes while remaining causal and stable.
+
+### Current limitation
+The response metrics are now in the software framework, while the next validation step is a discrete PWM + sampling/computation-delay plant with DC-link capacitor dynamics.
+
 ## [v1.7] - 2026-08-14
 
 ### Added
@@ -11,9 +26,6 @@
 ### Engineering significance
 The APF reference is no longer treated as an ideal current source. The controller must now respect available DC-link voltage, interface inductance, resistance and current limits.
 
-### Limitation
-This is an averaged control-development plant. Device-level PWM switching, DC-link capacitor energy dynamics, LCL resonance, sampling/computation delay and semiconductor losses remain for subsequent versions.
-
 ## [v1.6] - 2026-08-14
 
 ### Added
@@ -22,21 +34,9 @@ This is an averaged control-development plant. Device-level PWM switching, DC-li
 - Current-limit behavior in the power-stage model.
 - Closed-loop regression test proving harmonic-residual reduction with finite actuator dynamics.
 
-### Architecture
-The project is now structured as an APF control brain: observation -> compensation reference -> current-loop/power-stage -> compensated grid response.
-
-### Important limitation
-The v1.6 plant is a control-development model, not a transistor-level inverter simulation. PWM, DC-link dynamics, L/LCL filter, sampling delay and semiconductor switching are still to be modeled.
-
 ## [v1.5] - 2026-08-14
 
-### Added
-- Explicit APF control-brain layer.
-- Compensation-current reference generator: APF injects the negative non-fundamental residual.
-- Ideal cancellation reference experiment.
-
-### Architecture correction
-The project is explicitly an APF control-algorithm brain, not merely a waveform software filter.
+- Added explicit APF control-brain layer and compensation-current reference generator.
 
 ## [v1.4] - 2026-08-14
 
