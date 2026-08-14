@@ -1,5 +1,19 @@
 # Changelog
 
+## [v1.7] - 2026-08-14
+
+### Added
+- DC-link voltage constraint for the APF inverter stage.
+- L/R interface model using `L di/dt = v_inv - v_grid - R i`.
+- Conservative modulation voltage limit and APF current saturation.
+- Feed-forward voltage requirement calculation for current-reference tracking.
+
+### Engineering significance
+The APF reference is no longer treated as an ideal current source. The controller must now respect available DC-link voltage, interface inductance, resistance and current limits.
+
+### Limitation
+This is an averaged control-development plant. Device-level PWM switching, DC-link capacitor energy dynamics, LCL resonance, sampling/computation delay and semiconductor losses remain for subsequent versions.
+
 ## [v1.6] - 2026-08-14
 
 ### Added
