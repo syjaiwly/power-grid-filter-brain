@@ -1,24 +1,32 @@
 # Version Log
 
-## v1.2 — 2026-08-14
+## v1.4 — 2026-08-14
 
 ### Added
-- Explicit causal tracker latency metric based on the configured 50 Hz state time constant.
-- Hardened real-time input/parameter validation.
-- Clear deployment rule separating causal state tracking from offline reference reconstruction.
+- AdaptiveCausalFundamental50HzBrain.
+- Coherence-based adaptive tracking speed.
+- Fast path for sustained 50 Hz-coherent fundamental changes.
+- Slow path for incoherent/high-frequency disturbances.
+- Regression coverage for a real 50 Hz amplitude step and pure 5th-harmonic rejection.
 
-### Key engineering rule
-Latency is now a first-class metric. We will not accept an apparent filtering improvement if it relies on future samples or hides unacceptable tracking delay.
+### Interpretation
+The filter no longer treats every instantaneous error as a reason to rewrite the fundamental state. It evaluates whether the innovation is phase-coherent with the fixed 50 Hz reference.
+
+### Limitation
+The gate is a causal heuristic. Thresholds and time constants require broad benchmark calibration before any hardware deployment claim.
+
+## v1.3 — 2026-08-14
+
+- Added causal fundamental-state change detector using 50 Hz I/Q phasor comparison.
+- Reference test: real 50 Hz amplitude step confidence ≈ 0.247; pure 5th harmonic ≈ 0.000.
+
+## v1.2 — 2026-08-14
+
+- Added explicit causal tracker latency metric and hardened real-time state handling.
 
 ## v1.1 — 2026-08-14
 
-### Added
-- CausalFundamental50HzBrain using synchronous I/Q demodulation and exponential tracking.
-- Explicit causal-vs-offline estimator distinction.
-- Regression tests for amplitude-step tracking.
-
-### Key engineering finding
-The previous sliding-window estimator is useful as an offline reference but is not strictly causal. A real deployment path therefore needs a causal state tracker.
+- Added CausalFundamental50HzBrain using synchronous I/Q demodulation and exponential tracking.
 
 ## v1.0 — 2026-08-14
 
@@ -34,8 +42,7 @@ The previous sliding-window estimator is useful as an offline reference but is n
 
 ## v0.7 — 2026-08-14
 
-- Fixed absolute-time phase reference.
-- Added symmetrical components.
+- Fixed absolute-time phase reference and added symmetrical components.
 
 ## v0.6-baseline — 2026-08-14
 
